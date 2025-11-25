@@ -25,6 +25,9 @@ def parse_arguments():
     
     # Model selection (Optional)
     parser.add_argument("--model", type=str, default="base", choices=["tiny", "base", "small", "medium", "large"], help="Whisper model size.")
+    
+    # Compression flag (Optional)
+    parser.add_argument("--compress", action="store_true", help="Compress output video significantly (reduces file size, slower processing).")
 
     return parser.parse_args()
 
@@ -187,24 +190,43 @@ def main():
 
     # 8. Merge Audio with FFmpeg
     if args.output and temp_video_path and os.path.exists(temp_video_path):
-        print("Merging original audio into final video...")
+        if args.compress:
+            print("Merging audio and compressing video (this will take longer)...")
+        else:
+            print("Merging original audio into final video...")
         
         try:
-            # This command takes the video from the silent temp file (0:v)
-            # and the audio from the original input file (1:a)
-            # and combines them.
-            command = [
-                "ffmpeg",
-                "-y",                   # Overwrite output without asking
-                "-i", temp_video_path,  # Input 0: Silent video we just made
-                "-i", args.input_video, # Input 1: Original video with audio
-                "-c:v", "copy",         # Copy video stream (don't re-encode)
-                "-c:a", "aac",          # Encode audio to AAC
-                "-map", "0:v:0",        # Map video from Input 0
-                "-map", "1:a:0",        # Map audio from Input 1
-                "-shortest",            # Stop when the shortest stream ends
-                args.output             # Final output file
-            ]
+            if args.compress:
+                # Compression mode: Re-encode video with H.264 and compress audio
+                command = [
+                    "ffmpeg",
+                    "-y",                   # Overwrite output without asking
+                    "-i", temp_video_path,  # Input 0: Silent video we just made
+                    "-i", args.input_video, # Input 1: Original video with audio
+                    "-c:v", "libx264",      # Use H.264 codec
+                    "-crf", "28",           # Constant Rate Factor (18-28 is good, higher = smaller file)
+                    "-preset", "medium",    # Encoding speed (slow = better compression)
+                    "-c:a", "aac",          # AAC audio codec
+                    "-b:a", "128k",         # Audio bitrate
+                    "-map", "0:v:0",        # Map video from Input 0
+                    "-map", "1:a:0",        # Map audio from Input 1
+                    "-shortest",            # Stop when the shortest stream ends
+                    args.output             # Final output file
+                ]
+            else:
+                # Fast mode: Copy video stream without re-encoding
+                command = [
+                    "ffmpeg",
+                    "-y",                   # Overwrite output without asking
+                    "-i", temp_video_path,  # Input 0: Silent video we just made
+                    "-i", args.input_video, # Input 1: Original video with audio
+                    "-c:v", "copy",         # Copy video stream (don't re-encode)
+                    "-c:a", "aac",          # Encode audio to AAC
+                    "-map", "0:v:0",        # Map video from Input 0
+                    "-map", "1:a:0",        # Map audio from Input 1
+                    "-shortest",            # Stop when the shortest stream ends
+                    args.output             # Final output file
+                ]
             
             # Run the command silently
             subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

@@ -42,6 +42,11 @@ python whisper_subtitles.py input.mp4
 python whisper_subtitles.py input.mp4 -o output.mp4
 ```
 
+**Compress output (smaller file size):**
+```bash
+python whisper_subtitles.py input.mp4 -o output.mp4 --compress
+```
+
 **No preview (faster):**
 ```bash
 python whisper_subtitles.py input.mp4 -o output.mp4 --no-show
