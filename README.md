@@ -5,7 +5,7 @@ Automatically generate and burn subtitles into videos using OpenAI Whisper.
 ## Example
 
 ```bash
-python main.py ./assets/Gnome_Interview_Video_on_Fox_News.mp4 --output ./assets/Gnome_Interview_Video_on_Fox_News_transcribed.mp4 --no-show
+python whisper_subtitles.py ./assets/Gnome_Interview_Video_on_Fox_News.mp4 --output ./assets/Gnome_Interview_Video_on_Fox_News_transcribed.mp4 --no-show
 ```
 
 **Output:** Video with white text on black background at the bottom, synced to speech.
