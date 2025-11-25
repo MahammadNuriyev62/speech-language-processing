@@ -10,9 +10,7 @@ python main.py ./assets/Gnome_Interview_Video_on_Fox_News.mp4 --output ./assets/
 
 **Output:** Video with white text on black background at the bottom, synced to speech.
 
-<video src="https://github.com/MahammadNuriyev62/speech-language-processing/raw/refs/heads/master/assets/Gnome_Interview_Video_on_Fox_News_transcribed.mp4" controls width="600">
-  Your browser doesn't support video.
-</video>
+https://github.com/user-attachments/assets/40c16fbc-321d-46ff-aa07-1e6d7dfa78f7
 
 *Subtitles appear automatically at the bottom with precise timing*
 
