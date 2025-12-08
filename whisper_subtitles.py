@@ -29,6 +29,9 @@ def parse_arguments():
     # Compression flag (Optional)
     parser.add_argument("--compress", action="store_true", help="Compress output video significantly (reduces file size, slower processing).")
 
+    # Language (Optional)
+    parser.add_argument("--language", type=str, default=None, help="Language code for transcription (e.g., 'en', 'az', 'ru'). Auto-detects if not specified.")
+
     return parser.parse_args()
 
 def check_ffmpeg():
@@ -110,7 +113,12 @@ def main():
     # 4. Transcribe
     print("Transcribing audio... (This may take some time depending on video length)")
     # We use fp16=False to avoid warnings if you are on a CPU
-    result = model.transcribe(args.input_video, fp16=False)
+    transcribe_options = {"fp16": False}
+    if args.language:
+        transcribe_options["language"] = args.language
+        print(f"Using specified language: {args.language}")
+    result = model.transcribe(args.input_video, **transcribe_options)
+    print(f"Detected/used language: {result['language']}")
     segments = result["segments"]
     print("Transcription complete.")
 
