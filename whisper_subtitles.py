@@ -12,13 +12,13 @@ import subprocess
 warnings.filterwarnings("ignore", category=UserWarning, module='scipy')
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description="Generate subtitles for a video using OpenAI Whisper.")
+    parser = argparse.ArgumentParser(description="Generate subtitles for a video or audio file using OpenAI Whisper.")
+
+    # Input file (Required)
+    parser.add_argument("input_file", type=str, help="Path to the input video or audio file (mp4, mp3, wav, etc.).")
     
-    # Input video file (Required)
-    parser.add_argument("input_video", type=str, help="Path to the input video file.")
-    
-    # Output video file (Optional)
-    parser.add_argument("-o", "--output", type=str, help="Path to save the output video.")
+    # Output file (Optional)
+    parser.add_argument("-o", "--output", type=str, help="Path to save the output (video with subtitles for video input, SRT file for audio input).")
     
     # Flag to hide the live window (Optional)
     parser.add_argument("--no-show", action="store_true", help="Do not show the video window live (faster processing).")
@@ -31,6 +31,9 @@ def parse_arguments():
 
     # Language (Optional)
     parser.add_argument("--language", type=str, default=None, help="Language code for transcription (e.g., 'en', 'az', 'ru'). Auto-detects if not specified.")
+
+    # Translate to English (Optional)
+    parser.add_argument("--translate", action="store_true", help="Translate speech to English (instead of transcribing in original language).")
 
     return parser.parse_args()
 
@@ -55,6 +58,35 @@ def is_headless():
         if "DISPLAY" not in os.environ:
             return True
     return False
+
+def is_audio_only(file_path):
+    """
+    Checks if the file is an audio-only format (no video stream).
+    """
+    audio_extensions = {'.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.wma'}
+    ext = os.path.splitext(file_path)[1].lower()
+    return ext in audio_extensions
+
+def format_timestamp_srt(seconds):
+    """
+    Converts seconds to SRT timestamp format: HH:MM:SS,mmm
+    """
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    millis = int((seconds - int(seconds)) * 1000)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
+
+def write_srt(segments, output_path):
+    """
+    Writes transcription segments to an SRT subtitle file.
+    """
+    with open(output_path, 'w', encoding='utf-8') as f:
+        for i, seg in enumerate(segments, 1):
+            start = format_timestamp_srt(seg['start'])
+            end = format_timestamp_srt(seg['end'])
+            text = seg['text'].strip()
+            f.write(f"{i}\n{start} --> {end}\n{text}\n\n")
 
 def draw_subtitle(frame, text):
     """
@@ -90,40 +122,68 @@ def main():
     check_ffmpeg()
 
     # 1. Validation
-    if not os.path.exists(args.input_video):
-        print(f"Error: Input file '{args.input_video}' not found.")
+    if not os.path.exists(args.input_file):
+        print(f"Error: Input file '{args.input_file}' not found.")
         sys.exit(1)
 
-    # 2. Auto-detect Headless Environment
-    if is_headless():
+    # 2. Check if input is audio-only
+    audio_only = is_audio_only(args.input_file)
+    if audio_only:
+        print(f"Detected audio-only file: {args.input_file}")
+
+    # 3. Auto-detect Headless Environment (only relevant for video files)
+    if not audio_only and is_headless():
         if not args.no_show:
             print("\nWARNING: No display detected (Headless environment).")
             print("         Disabling live window to prevent crashes.")
             args.no_show = True
-        
+
         if not args.output:
             print("         WARNING: You are in headless mode but didn't specify an output file.")
             print("         The script will run but you won't see the result.")
             print("         Use -o output.mp4 to save the result.\n")
 
-    # 3. Load Whisper Model
+    # 4. Load Whisper Model
     print(f"Loading Whisper model ('{args.model}')...")
     model = whisper.load_model(args.model)
 
-    # 4. Transcribe
-    print("Transcribing audio... (This may take some time depending on video length)")
+    # 5. Transcribe (or Translate)
+    task = "translate" if args.translate else "transcribe"
+    if args.translate:
+        print("Translating audio to English... (This may take some time)")
+    else:
+        print("Transcribing audio... (This may take some time)")
+
     # We use fp16=False to avoid warnings if you are on a CPU
-    transcribe_options = {"fp16": False}
+    transcribe_options = {"fp16": False, "task": task}
     if args.language:
         transcribe_options["language"] = args.language
-        print(f"Using specified language: {args.language}")
-    result = model.transcribe(args.input_video, **transcribe_options)
+        print(f"Source language: {args.language}")
+    result = model.transcribe(args.input_file, **transcribe_options)
     print(f"Detected/used language: {result['language']}")
+    if args.translate:
+        print(f"Translated to: English")
     segments = result["segments"]
     print("Transcription complete.")
 
-    # 5. Setup Video Capture
-    cap = cv2.VideoCapture(args.input_video)
+    # 6. Handle audio-only files (output SRT and exit)
+    if audio_only:
+        if args.output:
+            output_path = args.output
+            # Ensure .srt extension for audio files
+            if not output_path.lower().endswith('.srt'):
+                output_path = os.path.splitext(output_path)[0] + '.srt'
+        else:
+            # Default output name based on input
+            output_path = os.path.splitext(args.input_file)[0] + '.srt'
+
+        write_srt(segments, output_path)
+        print(f"Subtitles saved to: {output_path}")
+        print("Done.")
+        return
+
+    # 7. Setup Video Capture (video files only from here)
+    cap = cv2.VideoCapture(args.input_file)
     fps = cap.get(cv2.CAP_PROP_FPS)
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -210,7 +270,7 @@ def main():
                     "ffmpeg",
                     "-y",                   # Overwrite output without asking
                     "-i", temp_video_path,  # Input 0: Silent video we just made
-                    "-i", args.input_video, # Input 1: Original video with audio
+                    "-i", args.input_file, # Input 1: Original video with audio
                     "-c:v", "libx264",      # Use H.264 codec
                     "-crf", "28",           # Constant Rate Factor (18-28 is good, higher = smaller file)
                     "-preset", "medium",    # Encoding speed (slow = better compression)
@@ -227,7 +287,7 @@ def main():
                     "ffmpeg",
                     "-y",                   # Overwrite output without asking
                     "-i", temp_video_path,  # Input 0: Silent video we just made
-                    "-i", args.input_video, # Input 1: Original video with audio
+                    "-i", args.input_file, # Input 1: Original video with audio
                     "-c:v", "copy",         # Copy video stream (don't re-encode)
                     "-c:a", "aac",          # Encode audio to AAC
                     "-map", "0:v:0",        # Map video from Input 0
