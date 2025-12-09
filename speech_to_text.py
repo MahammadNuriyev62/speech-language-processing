@@ -67,6 +67,21 @@ def is_audio_only(file_path):
     ext = os.path.splitext(file_path)[1].lower()
     return ext in audio_extensions
 
+def get_output_format(output_path):
+    """
+    Determines output format based on file extension.
+    Returns: 'srt', 'txt', or 'video'
+    """
+    if not output_path:
+        return None
+    ext = os.path.splitext(output_path)[1].lower()
+    if ext == '.srt':
+        return 'srt'
+    elif ext == '.txt':
+        return 'txt'
+    else:
+        return 'video'
+
 def format_timestamp_srt(seconds):
     """
     Converts seconds to SRT timestamp format: HH:MM:SS,mmm
@@ -87,6 +102,29 @@ def write_srt(segments, output_path):
             end = format_timestamp_srt(seg['end'])
             text = seg['text'].strip()
             f.write(f"{i}\n{start} --> {end}\n{text}\n\n")
+
+def write_raw_tokens(result, output_path, task="transcribe"):
+    """
+    Writes raw tokens with Whisper special tokens visible to a text file.
+    Format: <|startoftranscript|><|en|><|transcribe|><|0.00|>Hello world<|2.50|>...<|endoftranscript|>
+    """
+    lang = result['language']
+    segments = result['segments']
+
+    # Build token string with special tokens
+    output = f"<|startoftranscript|><|{lang}|><|{task}|>"
+
+    for seg in segments:
+        # Add timestamp token for segment start
+        start_time = seg['start']
+        output += f"<|{start_time:.2f}|>"
+        # Add the transcribed text
+        output += seg['text']
+
+    output += "<|endoftranscript|>"
+
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(output)
 
 def draw_subtitle(frame, text):
     """
@@ -166,7 +204,21 @@ def main():
     segments = result["segments"]
     print("Transcription complete.")
 
-    # 6. Handle audio-only files (output SRT and exit)
+    # 6. Determine output format and handle accordingly
+    output_format = get_output_format(args.output)
+
+    # Handle text-based outputs (SRT or raw tokens)
+    if output_format in ('srt', 'txt'):
+        if output_format == 'srt':
+            write_srt(segments, args.output)
+            print(f"Subtitles saved to: {args.output}")
+        else:  # txt - raw tokens
+            write_raw_tokens(result, args.output, task=task)
+            print(f"Raw tokens saved to: {args.output}")
+        print("Done.")
+        return
+
+    # Handle audio-only files (default to SRT if no output specified)
     if audio_only:
         if args.output:
             output_path = args.output
