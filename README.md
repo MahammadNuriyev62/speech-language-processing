@@ -5,7 +5,7 @@ Automatically generate and burn subtitles into videos using OpenAI Whisper.
 ## Example
 
 ```bash
-python whisper_subtitles.py ./assets/Gnome_Interview_Video_on_Fox_News.mp4 --output ./assets/Gnome_Interview_Video_on_Fox_News_transcribed.mp4 --no-show
+python speech_to_text.py ./assets/Gnome_Interview_Video_on_Fox_News.mp4 --output ./assets/Gnome_Interview_Video_on_Fox_News_transcribed.mp4 --no-show
 ```
 
 **Output:** Video with white text on black background at the bottom, synced to speech.
@@ -32,27 +32,27 @@ https://github.com/user-attachments/assets/40c16fbc-321d-46ff-aa07-1e6d7dfa78f7
 
 **Basic (live preview):**
 ```bash
-python whisper_subtitles.py input.mp4
+python speech_to_text.py input.mp4
 ```
 
 **Save output:**
 ```bash
-python whisper_subtitles.py input.mp4 -o output.mp4
+python speech_to_text.py input.mp4 -o output.mp4
 ```
 
 **Compress output (smaller file size):**
 ```bash
-python whisper_subtitles.py input.mp4 -o output.mp4 --compress
+python speech_to_text.py input.mp4 -o output.mp4 --compress
 ```
 
 **No preview (faster):**
 ```bash
-python whisper_subtitles.py input.mp4 -o output.mp4 --no-show
+python speech_to_text.py input.mp4 -o output.mp4 --no-show
 ```
 
 **Choose model:**
 ```bash
-python whisper_subtitles.py input.mp4 --model small
+python speech_to_text.py input.mp4 --model small
 ```
 
 Models: `tiny`, `base`, `small`, `medium`, `large` (larger = more accurate but slower)
