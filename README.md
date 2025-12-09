@@ -30,32 +30,123 @@ https://github.com/user-attachments/assets/40c16fbc-321d-46ff-aa07-1e6d7dfa78f7
 
 ## Usage
 
-**Basic (live preview):**
+### Input Formats
+
+Supports both video and audio files:
+- **Video:** `.mp4` and other FFmpeg-supported formats
+- **Audio:** `.mp3`, `.wav`, `.flac`, `.ogg`, `.m4a`, `.aac`, `.wma`
+
+### Output Formats
+
+Output format is determined by the file extension:
+- **`.mp4`** (or other video) - Video with burned-in subtitles
+- **`.srt`** - SRT subtitle file with timestamps
+- **`.txt`** - Raw tokens with Whisper special tokens (e.g., `<|startoftranscript|><|en|>...`)
+
+---
+
+### Video Input Examples
+
+**Live preview (no output file):**
 ```bash
 python speech_to_text.py input.mp4
 ```
 
-**Save output:**
+**Save video with burned subtitles:**
 ```bash
 python speech_to_text.py input.mp4 -o output.mp4
 ```
 
-**Compress output (smaller file size):**
+**Export SRT subtitles only (no video processing):**
+```bash
+python speech_to_text.py input.mp4 -o subtitles.srt
+```
+
+**Export raw tokens with special markers:**
+```bash
+python speech_to_text.py input.mp4 -o transcription.txt
+```
+
+Output format:
+```
+<|startoftranscript|><|en|><|transcribe|><|0.00|> Hello world...<|endoftranscript|>
+```
+
+**Compress output video (smaller file, slower):**
 ```bash
 python speech_to_text.py input.mp4 -o output.mp4 --compress
 ```
 
-**No preview (faster):**
+**No live preview (faster processing):**
 ```bash
 python speech_to_text.py input.mp4 -o output.mp4 --no-show
 ```
 
-**Choose model:**
+---
+
+### Audio Input Examples
+
+**Transcribe audio to SRT:**
+```bash
+python speech_to_text.py input.mp3 -o subtitles.srt
+```
+
+**Transcribe audio to raw tokens:**
+```bash
+python speech_to_text.py input.mp3 -o transcription.txt
+```
+
+**Default output (SRT with same name as input):**
+```bash
+python speech_to_text.py input.mp3
+# Creates input.srt
+```
+
+---
+
+### Model Selection
+
 ```bash
 python speech_to_text.py input.mp4 --model small
 ```
 
 Models: `tiny`, `base`, `small`, `medium`, `large` (larger = more accurate but slower)
+
+---
+
+### Language Options
+
+**Specify source language:**
+```bash
+python speech_to_text.py input.mp4 --language en -o output.srt
+python speech_to_text.py input.mp4 --language az -o output.srt
+python speech_to_text.py input.mp4 --language ru -o output.srt
+```
+
+**Translate to English:**
+```bash
+python speech_to_text.py spanish_video.mp4 --translate -o english_subtitles.srt
+python speech_to_text.py french_audio.mp3 --translate -o english.txt
+```
+
+---
+
+### Combined Examples
+
+**Full pipeline: video with subtitles, compressed, no preview:**
+```bash
+python speech_to_text.py input.mp4 -o output.mp4 --compress --no-show --model medium
+```
+
+**Translate foreign video and export SRT:**
+```bash
+python speech_to_text.py foreign_video.mp4 --translate --language es -o english_subs.srt
+```
+
+**High-accuracy transcription to raw tokens:**
+```bash
+python speech_to_text.py podcast.mp3 --model large -o transcript.txt
+```
 
 ## Notes
 
